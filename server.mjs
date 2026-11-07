@@ -59,6 +59,12 @@ const TOOLS = [
 ];
 
 const tagOf = (repo) => (loadLists().find(l => l.repo === repo) || {}).tag || '';
+const fmtText = (rows) => rows.map((r, i) => {
+  const parts = [r.tag || r.list, r.category].filter(Boolean);
+  const where = parts.length ? '  [' + parts.join(' / ') + ']' : '';
+  const desc = (r.desc || '').replace(/\s+/g, ' ').slice(0, 180);
+  return `${i + 1}. ${r.name}${where}\n   ${r.url}${desc ? '\n   ' + desc : ''}`;
+}).join('\n');
 const fmt = (e) => ({ name: e.name, url: e.url, desc: e.desc, list: e.list, tag: tagOf(e.list), category: e.category, score: e.score });
 
 async function callTool(name, args = {}) {
@@ -76,8 +82,11 @@ async function callTool(name, args = {}) {
   if (name === 'awesome_search') {
     const limit = Math.min(Number(args.limit) || 10, 50);
     const hits = search(idx, args.query || '', { limit, list: args.list || '', all: !!args.all });
+    const head = hits.length
+      ? `「${args.query}」命中 ${hits.length} 条（索引 ${idx.entries.length} 条）\n`
+      : `「${args.query}」无命中（索引 ${idx.entries.length} 条）；换关键词，或 awesome_sync 刷新后重试`;
     return {
-      content: [{ type: 'text', text: hits.length ? `「${args.query}」命中 ${hits.length} 条（索引 ${idx.entries.length} 条）` : `「${args.query}」无命中；先 awesome_sync 或换关键词` }],
+      content: [{ type: 'text', text: head + fmtText(hits) }],
       structuredContent: { query: args.query, count: hits.length, results: hits.map(fmt) },
     };
   }
@@ -90,9 +99,10 @@ async function callTool(name, args = {}) {
     const limit = Math.min(Number(args.limit) || 40, 200);
     const cat = (args.category || '').toLowerCase();
     const rows = idx.entries.filter(e => (!args.list || e.list === args.list) && (!cat || (e.category || '').toLowerCase().includes(cat)));
+    const shown = rows.slice(0, limit);
     return {
-      content: [{ type: 'text', text: `${args.list || '全部'}${cat ? ' / ' + args.category : ''}: ${rows.length} 条` }],
-      structuredContent: { total: rows.length, returned: Math.min(rows.length, limit), results: rows.slice(0, limit).map(fmt) },
+      content: [{ type: 'text', text: `${args.list || '全部'}${cat ? ' / ' + args.category : ''}: 共 ${rows.length} 条，显示 ${shown.length} 条\n` + fmtText(shown) }],
+      structuredContent: { total: rows.length, returned: shown.length, results: shown.map(fmt) },
     };
   }
   if (name === 'awesome_sync') {

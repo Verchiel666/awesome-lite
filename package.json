@@ -1,6 +1,6 @@
 {
   "name": "awesome-lite-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Offline search over the awesome list ecosystem: 9k+ curated entries from 12 lists, as an MCP server plus a CLI. Zero dependencies.",
   "type": "module",
   "bin": {
@@ -27,10 +27,17 @@
     "cli"
   ],
   "license": "MIT",
-  "engines": { "node": ">=18" },
-  "repository": { "type": "git", "url": "git+https://github.com/Verchiel666/awesome-lite.git" },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Verchiel666/awesome-lite.git"
+  },
   "homepage": "https://github.com/Verchiel666/awesome-lite#readme",
-  "bugs": { "url": "https://github.com/Verchiel666/awesome-lite/issues" },
+  "bugs": {
+    "url": "https://github.com/Verchiel666/awesome-lite/issues"
+  },
   "scripts": {
     "sync": "node cli.mjs sync",
     "search": "node cli.mjs search",
