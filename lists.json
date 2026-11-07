@@ -1,0 +1,16 @@
+{
+  "lists": [
+    { "repo": "sindresorhus/awesome", "tag": "总目录", "why": "清单的清单，28 个领域入口" },
+    { "repo": "codecrafters-io/build-your-own-x", "tag": "动手造", "why": "亲手复刻 Redis/Git/Docker，560k 星第一" },
+    { "repo": "EbookFoundation/free-programming-books", "tag": "免费书", "why": "合法免费编程书，按语言分类" },
+    { "repo": "vinta/awesome-python", "tag": "Python", "why": "Python 生态全集" },
+    { "repo": "sindresorhus/awesome-nodejs", "tag": "Node", "why": "Node 生态，本机就是 Node 环境" },
+    { "repo": "awesome-selfhosted/awesome-selfhosted", "tag": "自托管", "why": "能在手机上自托管的应用" },
+    { "repo": "public-apis/public-apis", "tag": "开放API", "why": "免费 API 集合，应用侧填充数据" },
+    { "repo": "punkpeye/awesome-mcp-servers", "tag": "MCP", "why": "可直接挂到 DSH 上的 MCP 服务" },
+    { "repo": "wtsxDev/reverse-engineering", "tag": "逆向", "why": "逆向工程工具与资料" },
+    { "repo": "JStumpp/awesome-android", "tag": "Android", "why": "Android 开发库与工具" },
+    { "repo": "e2b-dev/awesome-ai-agents", "tag": "Agent", "why": "AI Agent 项目图谱" },
+    { "repo": "Hannibal046/Awesome-LLM", "tag": "LLM", "why": "大模型论文/框架/工具" }
+  ]
+}

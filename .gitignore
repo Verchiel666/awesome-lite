@@ -1,0 +1,6 @@
+node_modules/
+cache/
+*_token.txt
+.npmrc
+index.json
+*.tgz
