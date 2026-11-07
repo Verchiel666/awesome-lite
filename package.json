@@ -1,6 +1,6 @@
 {
   "name": "awesome-lite-mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Offline search over the awesome list ecosystem: 9k+ curated entries from 12 lists, as an MCP server plus a CLI. Zero dependencies.",
   "type": "module",
   "bin": {

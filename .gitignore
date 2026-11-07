@@ -4,3 +4,4 @@ cache/
 .npmrc
 index.json
 *.tgz
+index.json.bak
