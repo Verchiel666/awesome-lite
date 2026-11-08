@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>awesome 清单检索</title>
+<meta name="description" content="本机整理的 12 张 awesome 清单、九千多条资源，可搜索、可按清单与分类筛选。">
+<style>
+  :root {
+    --bg: #fbfaf8; --fg: #1d1b19; --muted: #6b6660; --line: #e3ded7;
+    --card: #ffffff; --accent: #b4541f; --mark: #ffe9a8; --chip: #f1ece5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14130f; --fg: #ece7df; --muted: #9c948a; --line: #2e2a24;
+      --card: #1c1a16; --accent: #f0a06a; --mark: #6b5316; --chip: #262319; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.55 -apple-system, "Noto Sans SC", "PingFang SC", Roboto, system-ui, sans-serif; }
+  a { color: inherit; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--bg);
+    border-bottom: 1px solid var(--line); padding: 10px 12px 8px; }
+  h1 { font-size: 16px; margin: 0 0 2px; letter-spacing: .01em; }
+  .stats { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .searchbox { display: flex; gap: 8px; align-items: center; }
+  input[type=search] { flex: 1; min-width: 0; padding: 10px 12px; font-size: 16px; color: var(--fg);
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px; outline: none; }
+  input[type=search]:focus { border-color: var(--accent); }
+  button { font: inherit; color: var(--fg); background: var(--chip); border: 1px solid var(--line);
+    border-radius: 10px; padding: 9px 11px; cursor: pointer; }
+  button:active { transform: translateY(1px); }
+  .filters { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 2px; scrollbar-width: none; }
+  .filters::-webkit-scrollbar { display: none; }
+  .chip { white-space: nowrap; font-size: 12px; padding: 5px 10px; border-radius: 999px;
+    background: var(--chip); border: 1px solid var(--line); cursor: pointer; }
+  .chip[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  main { padding: 8px 12px 64px; }
+  .row { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .name { font-weight: 600; color: var(--accent); text-decoration: none; word-break: break-word; }
+  .meta { color: var(--muted); font-size: 12px; margin: 2px 0 4px; }
+  .desc { color: var(--fg); font-size: 14px; word-break: break-word; }
+  mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1px; }
+  .empty { color: var(--muted); padding: 40px 0; text-align: center; }
+  .more { text-align: center; color: var(--muted); font-size: 13px; padding: 18px 0; }
+  footer { color: var(--muted); font-size: 12px; padding: 0 12px 24px; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>awesome 清单检索</h1>
+  <div class="stats" id="stats">加载中…</div>
+  <div class="searchbox">
+    <input id="q" type="search" inputmode="search" autocomplete="off" autocapitalize="off"
+           placeholder="搜名字、描述、地址（/ 聚焦，Esc 清空）" autofocus>
+    <button id="random" title="随便看一条">随机</button>
+  </div>
+  <div class="filters" id="chips"></div>
+</header>
+<main>
+  <div id="list"></div>
+  <div class="more" id="more"></div>
+</main>
+<footer>
+  <div>数据：本机 <code>awesome-lite</code> 索引，12 张清单 · 全量条目；时间 <span id="built"></span>。</div>
+  <div>只做检索与跳转，不含第三方脚本、不发请求给你以外的服务。</div>
+</footer>
+<script>
+const PAGE = 60;
+const state = { q: '', list: 'all', cat: 'all', shown: 0, hits: [] };
+let DATA = null, LISTS = [], CATS = [];
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+function mark(text, q) {
+  const safe = esc(text);
+  if (!q) return safe;
+  const words = q.split(/\s+/).filter((w) => w.length > 1).slice(0, 4);
+  if (!words.length) return safe;
+  const re = new RegExp('(' + words.map(escRe).join('|') + ')', 'gi');
+  return safe.replace(re, '<mark>$1</mark>');
+}
+
+function score(e, q) {
+  const name = e.name.toLowerCase(), desc = (e.desc || '').toLowerCase(), url = e.url.toLowerCase();
+  if (!q) return 1;
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  let s = 0;
+  for (const w of words) {
+    const inName = name.indexOf(w), inDesc = desc.indexOf(w), inUrl = url.indexOf(w);
+    if (inName < 0 && inDesc < 0 && inUrl < 0) return 0;
+    s += inName === 0 ? 6 : inName > 0 ? 4 : inDesc >= 0 ? 2 : 1;
+  }
+  return s;
+}
+
+function search(keep) {
+  const q = state.q.trim();
+  const out = [];
+  for (const e of DATA.entries) {
+    if (state.list !== 'all' && e.list !== state.list) continue;
+    if (state.cat !== 'all' && e.cat !== state.cat) continue;
+    const s = score(e, q);
+    if (s > 0) out.push([s, e]);
+  }
+  const browse = (e) => e.li * 100000 + e.ci * 100 + e.name.length / 100; // 稳定排序的浏览顺序
+  out.sort((a, b) =>
+    b[0] - a[0] ||
+    (q ? a[1].name.localeCompare(b[1].name) : browse(a[1]) - browse(b[1])),
+  );
+  state.hits = out.map((x) => x[1]);
+  state.shown = 0;
+  $('list').innerHTML = '';
+  if (!state.hits.length) {
+    $('list').innerHTML = '<div class="empty">没有匹配。试试更短的词，或把筛选调回「全部」。</div>';
+    $('more').textContent = '';
+  }
+  $('stats').textContent = `${state.hits.length} 条结果 / 共 ${DATA.entries.length} 条 · ${LISTS.length} 张清单`;
+  renderMore(keep);
+  saveHash();
+}
+
+function row(e, q) {
+  const div = document.createElement('div');
+  div.className = 'row';
+  div.innerHTML =
+    `<a class="name" href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${mark(e.name, q)}</a>` +
+    `<div class="meta">${esc(e.cat)} · ${esc(listLabel(e.list))}</div>` +
+    (e.desc ? `<div class="desc">${mark(e.desc, q)}</div>` : '');
+  return div;
+}
+
+function listLabel(repo) {
+  const l = LISTS.find((x) => x.repo === repo);
+  return l && l.tag ? `${repo}（${l.tag}）` : repo;
+}
+
+function renderMore(keep) {
+  const box = $('list');
+  const frag = document.createDocumentFragment();
+  const next = Math.min(state.hits.length, state.shown + PAGE);
+  for (let i = state.shown; i < next; i++) frag.appendChild(row(state.hits[i], state.q.trim()));
+  box.appendChild(frag);
+  state.shown = next;
+  $('more').textContent = state.shown < state.hits.length
+    ? `已显示 ${state.shown} / ${state.hits.length}，继续滑动加载…`
+    : state.hits.length ? `到底了（${state.hits.length} 条）` : '';
+}
+
+function chips() {
+  const box = $('chips');
+  const make = (label, value, kind) => {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.textContent = label;
+    b.setAttribute('aria-pressed', String(state[kind] === value));
+    b.onclick = () => {
+      state[kind] = value;
+      if (kind === 'list') { state.cat = 'all'; cats(); }
+      chips();
+      search();
+      window.scrollTo({ top: 0 });
+    };
+    return b;
+  };
+  box.innerHTML = '';
+  box.appendChild(make(`全部（${DATA.entries.length}）`, 'all', 'list'));
+  for (const l of LISTS) {
+    const n = DATA.entries.filter((e) => e.list === l.repo).length;
+    if (n) box.appendChild(make(`${l.tag || l.repo}（${n}）`, l.repo, 'list'));
+  }
+}
+
+function cats() {
+  const box = $('chips');
+  if (state.list === 'all') return;
+  const counts = new Map();
+  for (const e of DATA.entries) if (e.list === state.list) counts.set(e.cat, (counts.get(e.cat) || 0) + 1);
+  const host = document.createElement('div');
+  host.className = 'filters';
+  host.style.marginTop = '6px';
+  const all = document.createElement('button');
+  all.className = 'chip';
+  all.textContent = '该清单全部分类';
+  all.setAttribute('aria-pressed', String(state.cat === 'all'));
+  all.onclick = () => { state.cat = 'all'; chips(); cats(); search(); };
+  host.appendChild(all);
+  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  for (const [cat, n] of sorted) {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.textContent = `${cat}（${n}）`;
+    b.setAttribute('aria-pressed', String(state.cat === cat));
+    b.onclick = () => { state.cat = cat; chips(); cats(); search(); window.scrollTo({ top: 0 }); };
+    host.appendChild(b);
+  }
+  box.appendChild(host);
+}
+
+let t = null;
+$('q').addEventListener('input', (ev) => {
+  state.q = ev.target.value;
+  clearTimeout(t);
+  t = setTimeout(() => search(), 120);
+});
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === '/' && document.activeElement !== $('q')) { ev.preventDefault(); $('q').focus(); }
+  if (ev.key === 'Escape') { $('q').value = ''; state.q = ''; search(); }
+});
+$('random').onclick = () => {
+  const pool = state.hits.length ? state.hits : DATA.entries;
+  const e = pool[Math.floor(Math.random() * pool.length)];
+  $('q').value = e.name;
+  state.q = e.name;
+  search();
+  window.scrollTo({ top: 0 });
+};
+
+const io = new IntersectionObserver((es) => {
+  if (es.some((x) => x.isIntersecting) && state.shown < state.hits.length) renderMore();
+}, { rootMargin: '600px' });
+
+function saveHash() {
+  const p = new URLSearchParams();
+  if (state.q) p.set('q', state.q);
+  if (state.list !== 'all') p.set('list', state.list);
+  if (state.cat !== 'all') p.set('cat', state.cat);
+  const h = p.toString();
+  history.replaceState(null, '', h ? '#' + h : location.pathname);
+}
+
+async function boot() {
+  const res = await fetch('data.json', { cache: 'no-cache' });
+  if (!res.ok) { $('stats').textContent = '数据加载失败：' + res.status; return; }
+  const raw = await res.json();
+  LISTS = raw.lists;
+  CATS = raw.cats;
+  DATA = {
+    builtAt: raw.builtAt,
+    entries: raw.entries.map(([li, ci, name, url, desc]) => ({
+      list: LISTS[li].repo, cat: CATS[ci], name, url, desc: desc || '', li, ci,
+    })),
+  };
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (p.get('q')) { state.q = p.get('q'); $('q').value = state.q; }
+  if (p.get('list')) state.list = p.get('list');
+  if (p.get('cat')) state.cat = p.get('cat');
+  $('built').textContent = (raw.builtAt || '').slice(0, 10);
+  chips();
+  if (state.list !== 'all') cats();
+  search();
+  io.observe($('more'));
+}
+boot();
+</script>
+</body>
+</html>
