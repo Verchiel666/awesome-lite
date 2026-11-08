@@ -41,6 +41,8 @@
   .meta { color: var(--muted); font-size: 12px; margin: 2px 0 4px; }
   .desc { color: var(--fg); font-size: 14px; word-break: break-word; }
   mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1px; }
+  .note { color: var(--muted); font-size: 12px; padding-top: 6px; }
+  .note:empty { display: none; }
   .empty { color: var(--muted); padding: 40px 0; text-align: center; }
   .more { text-align: center; color: var(--muted); font-size: 13px; padding: 18px 0; }
   footer { color: var(--muted); font-size: 12px; padding: 0 12px 24px; }
@@ -56,6 +58,7 @@
            placeholder="搜名字、描述、地址（/ 聚焦，Esc 清空）" autofocus>
     <button id="random" title="随便看一条">随机</button>
   </div>
+  <div class="note" id="note"></div>
   <div class="filters" id="chips"></div>
 </header>
 <main>
@@ -99,21 +102,41 @@ function score(e, q) {
 
 function search(keep) {
   const q = state.q.trim();
-  const out = [];
-  for (const e of DATA.entries) {
-    if (state.list !== 'all' && e.list !== state.list) continue;
-    if (state.cat !== 'all' && e.cat !== state.cat) continue;
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const browse = (e) => e.li * 100000 + e.ci * 100 + e.name.length / 100; // 稳定排序的浏览顺序
+  const sort = (out) =>
+    out.sort((a, b) =>
+      b[0] - a[0] || (q ? a[1].name.localeCompare(b[1].name) : browse(a[1]) - browse(b[1])),
+    );
+
+  const pool = DATA.entries.filter(
+    (e) => (state.list === 'all' || e.list === state.list) && (state.cat === 'all' || e.cat === state.cat),
+  );
+
+  let out = [];
+  for (const e of pool) {
     const s = score(e, q);
     if (s > 0) out.push([s, e]);
   }
-  const browse = (e) => e.li * 100000 + e.ci * 100 + e.name.length / 100; // 稳定排序的浏览顺序
-  out.sort((a, b) =>
-    b[0] - a[0] ||
-    (q ? a[1].name.localeCompare(b[1].name) : browse(a[1]) - browse(b[1])),
-  );
+  sort(out);
+
+  let note = '';
+  if (!out.length && words.length > 1) {
+    // 退一步：任一词命中，并说清这是放宽后的结果
+    const loose = [];
+    for (const e of pool) {
+      const hay = (e.name + ' ' + (e.desc || '') + ' ' + e.url).toLowerCase();
+      if (words.some((w) => hay.includes(w))) loose.push([1, e]);
+    }
+    sort(loose);
+    out = loose;
+    note = `没有一条同时含全部关键词；下面是含其中任一词的 ${loose.length} 条。`;
+  }
+
   state.hits = out.map((x) => x[1]);
   state.shown = 0;
   $('list').innerHTML = '';
+  $('note').textContent = note;
   if (!state.hits.length) {
     $('list').innerHTML = '<div class="empty">没有匹配。试试更短的词，或把筛选调回「全部」。</div>';
     $('more').textContent = '';
