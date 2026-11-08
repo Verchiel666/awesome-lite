@@ -241,7 +241,9 @@ async function boot() {
   DATA = {
     builtAt: raw.builtAt,
     entries: raw.entries.map(([li, ci, name, url, desc]) => ({
-      list: LISTS[li].repo, cat: CATS[ci], name, url, desc: desc || '', li, ci,
+      list: LISTS[li].repo, cat: CATS[ci], name,
+      url: url.startsWith('http') ? url : 'https://' + url,
+      desc: desc || '', li, ci,
     })),
   };
   const p = new URLSearchParams(location.hash.slice(1));
