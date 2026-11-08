@@ -2,6 +2,8 @@
 
 离线检索整个 **awesome 清单生态**的 MCP 服务 + CLI。零依赖，一个 index.json 装下 9,000+ 条精选资源。
 
+在线检索页（手机可开、可分享链接）：**https://verchiel666.github.io/awesome-lite/**
+
 > 起因：awesome（[sindresorhus/awesome](https://github.com/sindresorhus/awesome)，53 万 star）是「清单的清单」，
 > 但它的用法是「开浏览器 → 点 awesome.re → 上一页页翻」。这个项目把它变成**可检索、可离线、能被 AI 调用的索引**。
 
